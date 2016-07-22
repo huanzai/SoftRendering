@@ -2,102 +2,57 @@
 #include <WinUser.h>
 #include <windef.h>
 #include <WinBase.h>
+#include <time.h>
+#include <assert.h>
+#include <map>
+#include <vector>
+#include <math.h>
+
+#include "Screen.h"
+#include "Config.h"
+#include <fcntl.h>
+#include <io.h>
+#include <tchar.h>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
-LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+Screen* screen_ptr = NULL;
+
+void InitConsoleWindow()
 {
-	// User specified events
-	switch (uMsg)
-	{
-	case WM_CREATE:
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	}
-
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-class App
-{
-public:
-	HRESULT Init(HINSTANCE hInstance);
-	void Quit();
-
-private:
-	HWND mMainWindow;
-};
-
-HRESULT App::Init(HINSTANCE hInstance)
-{
-	// Create Window Class
-	WNDCLASS wc;
-	memset(&wc, 0, sizeof(wc));
-	wc.style = CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc = (WNDPROC)WndProc;
-	wc.lpszClassName = L"D3DWND";
-
-	RECT rc = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
-	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, false);
-
-	// Register Class and Create new Window
-	RegisterClass(&wc);
-
-	mMainWindow = CreateWindow(
-		L"D3DWND", L"SoftRendering", WS_OVERLAPPEDWINDOW, 0, 0,
-		rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance, 0);
-
-	if (mMainWindow == NULL)
-	{
-		return E_FAIL;
-	}
-
-	ShowWindow(mMainWindow, SW_SHOW);
-	UpdateWindow(mMainWindow);
-
-	return S_OK;
-}
-
-void App::Quit()
-{
-	DestroyWindow(mMainWindow);
+	int nCrt;
+	FILE* fp;
+	AllocConsole();
+	nCrt = _open_osfhandle(reinterpret_cast<long>(GetStdHandle(STD_OUTPUT_HANDLE)), _O_TEXT);
+	fp = _fdopen(nCrt, "w");
+	*stdout = *fp;
+	setvbuf(stdout, nullptr, _IONBF, 0);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
 {
-	App app;
-	HRESULT ret = app.Init(hInstance);
-	if (FAILED(ret))
-	{
-		exit(1);
+	InitConsoleWindow();
+
+	screen_ptr = new Screen();
+	int ret = screen_ptr->init(WINDOW_WIDTH, WINDOW_HEIGHT, _T("SoftRendering"));
+	if (ret < 0) {
+		printf("screen init failed(%d)!\n", ret);
+		exit(ret);
 	}
 
-	MSG msg;
-	memset(&msg, 0, sizeof(msg));
+	while (!screen_ptr->isExit()){
+		screen_ptr->dispatch();
 
-	// Keep track of the time 
-	DWORD startTime = GetTickCount();
-
-	while (msg.message != WM_QUIT)
-	{
-		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		else
-		{
-			DWORD t = GetTickCount();
-			float deltaTime = (t - startTime) * 0.001f;
-
-			// TODO Rendering
-
-			startTime = t;
+		uint32* fb = (uint32*)(screen_ptr->getFrameBuffer());
+		for (int y = 0; y < WINDOW_WIDTH * WINDOW_HEIGHT; y++) {
+			fb[y] = 0xc0c0c0;
+			if (y < WINDOW_WIDTH * WINDOW_HEIGHT / 2) fb[y] = 0x506070;
 		}
 
+		screen_ptr->update();
+		printf("=======test\n");
+		Sleep(1);
 	}
 
 	return 0;
