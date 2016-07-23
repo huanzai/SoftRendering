@@ -18,15 +18,18 @@ void Device::init(int w, int h, uint32* fb)
 		framebuffer[y] = fb + y*w;
 	}
 
-	background = 0; // black
-	foreground = 0xffffff; // white
+	background = 0xc0c0c0; 
+	foreground = 0xffffff; 
 }
 
+#include <stdio.h>
 void Device::clear()
-{
+{	
+	float inv_h = (float)1 / height;
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			framebuffer[y][x] = background;
+			int c = (float)0xc0 * inv_h * (height - y);
+			framebuffer[y][x] = (c << 16| c << 8 | c);
 		}
 	}
 }
