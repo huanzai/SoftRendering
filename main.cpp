@@ -156,5 +156,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 		Sleep(1);
 	}
 
+	device->close();
+	screen->close();
+
+	delete transform;
+	delete device;
+	delete screen;
+
 	return 0;
 }
