@@ -11,6 +11,7 @@ public:
 	Device();
 
 	void init(int w, int h, uint32* fb);
+	void clear();
 	void close();
 
 	void drawPoint(const Vector& p);
