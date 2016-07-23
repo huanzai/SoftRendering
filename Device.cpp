@@ -37,8 +37,8 @@ void Device::drawPoint(const Vector& p)
 	int y = (int)p.y;
 	int x = (int)p.x;
 
-	if (y > height) return;
-	if (x > width) return;
+	if (y >= height) return;
+	if (x >= width) return;
 
 	framebuffer[y][x] = foreground;
 }
