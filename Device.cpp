@@ -22,6 +22,15 @@ void Device::init(int w, int h, uint32* fb)
 	foreground = 0xffffff; // white
 }
 
+void Device::clear()
+{
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			framebuffer[y][x] = background;
+		}
+	}
+}
+
 void Device::close()
 {
 	if (framebuffer != NULL) {
@@ -49,37 +58,39 @@ void Device::drawLine(const Vertex& v1, const Vertex& v2)
 	const Vector& p1 = v1.pos;
 	const Vector& p2 = v2.pos;
 
-	if (p1.x == p2.x && p1.y == p2.y) {
+	int x1, y1, x2, y2;
+	x1 = p1.x;
+	y1 = p1.y;
+	x2 = p2.x;
+	y2 = p2.y;
+
+	float y,x;
+	y = p1.y;
+	x = p1.x;
+
+	if (x1 == x2 && y1 == y2) {
 		drawPoint(p1);
 	}
-	else if (p2.x == p1.x) {
+	else if (x1 == x2) {
 		drawPoint(p1);
 
-		int x, y;
-		x = p1.x;
-		y = p1.y;
-
-		int inc = (p1.y < p2.y) ? 1 : -1;
+		int inc = (y1 < y2) ? 1 : -1;
 		while (1) {
 			y += inc;
-			if (y == (int)(p2.y)) break;
+			if (int(y) == y2) break;
 			Vector p = {x, y, 0.f, 1.f};
 			drawPoint(p);
 		}
 
 		drawPoint(p2);
 	}
-	else if (p2.y == p1.y) {
+	else if (y1 == y2) {
 		drawPoint(p1);
 		
-		int x, y;
-		x = p1.x;
-		y = p1.y;
-
-		int inc = (p1.x < p2.x) ? 1 : -1;
+		int inc = (x1 < x2) ? 1 : -1;
 		while (1) {
 			x += inc;
-			if (x == (int)(p2.x)) break;
+			if (int(x) == x2) break;
 			Vector p = { x, y, 0.f, 1.f };
 			drawPoint(p);
 		}
@@ -88,16 +99,6 @@ void Device::drawLine(const Vertex& v1, const Vertex& v2)
 	}
 	else {
 		drawPoint(p1);
-
-		float y,x;
-		y = p1.y;
-		x = p1.x;
-
-		int x1, y1, x2, y2;
-		x1 = p1.x;
-		y1 = p1.y;
-		x2 = p2.x;
-		y2 = p2.y;
 
 		float t = (float)abs(x2 - x1) / abs(y2 - y1);
 		int xinc = (p1.x < p2.x) ? 1 : -1;
