@@ -1,5 +1,6 @@
 #include "Device.h"
 #include <Windows.h>
+#include <math.h>
 
 Device::Device() : framebuffer(NULL), zbuffer(NULL), 
 	background(0), foreground(0), width(0), height(0)
@@ -61,7 +62,7 @@ void Device::drawLine(const Vertex& v1, const Vertex& v2)
 		int inc = (p1.y < p2.y) ? 1 : -1;
 		while (1) {
 			y += inc;
-			if (y == p2.y) break;
+			if (y == (int)(p2.y)) break;
 			Vector p = {x, y, 0.f, 1.f};
 			drawPoint(p);
 		}
@@ -78,7 +79,7 @@ void Device::drawLine(const Vertex& v1, const Vertex& v2)
 		int inc = (p1.x < p2.x) ? 1 : -1;
 		while (1) {
 			x += inc;
-			if (x == p2.x) break;
+			if (x == (int)(p2.x)) break;
 			Vector p = { x, y, 0.f, 1.f };
 			drawPoint(p);
 		}
@@ -88,19 +89,24 @@ void Device::drawLine(const Vertex& v1, const Vertex& v2)
 	else {
 		drawPoint(p1);
 
-		int y,bx;
+		float y,x;
 		y = p1.y;
-		bx = p1.x;
+		x = p1.x;
 
-		float t = (float)(p2.y - p1.y) / (p2.x - p1.x);
-		int inc = (p1.y < p2.y) ? 1 : -1;
+		int x1, y1, x2, y2;
+		x1 = p1.x;
+		y1 = p1.y;
+		x2 = p2.x;
+		y2 = p2.y;
+
+		float t = (float)abs(x2 - x1) / abs(y2 - y1);
+		int xinc = (p1.x < p2.x) ? 1 : -1;
+		int yinc = (p1.y < p2.y) ? 1 : -1;
 		while (1) {
-			y += inc;
-			if (y == p2.y) break;
-
-			int x = bx + (int)(y / t);
-			Vector p = { x, y , 0.f, 1.f };
-			drawPoint(p);
+			y += yinc;
+			if (int(y) == y2) break;
+			x += t * xinc;
+			drawPoint({x,y,0.f,1.f});
 		}
 
 		drawPoint(p2);
