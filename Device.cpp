@@ -4,12 +4,12 @@
 #include <Windows.h>
 #include <math.h>
 
-Device::Device() : transform(NULL), framebuffer(NULL), zbuffer(NULL), 
+Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(NULL), 
 	background(0), foreground(0), width(0), height(0)
 {
 }
 
-void Device::init(int w, int h, uint32* fb, Transform* ts)
+void Device::init(int w, int h, uint32* fb, Transform* ts, int** tex)
 {
 	width = w;
 	height = h;
@@ -27,9 +27,9 @@ void Device::init(int w, int h, uint32* fb, Transform* ts)
 	foreground = 0xffffff; 
 
 	transform = ts;
+	textures = tex;
 }
 
-#include <stdio.h>
 void Device::clear()
 {	
 	float inv_h = (float)1 / height;
@@ -54,7 +54,7 @@ void Device::close()
 	}
 }
 
-void Device::drawPoint(const Vector& p, const Color& color)
+void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc)
 {
 	int y = (int)p.y;
 	int x = (int)p.x;
@@ -68,6 +68,16 @@ void Device::drawPoint(const Vector& p, const Color& color)
 	int g = color.g * 255;
 	int b = color.b * 255;
 
+	int *tex = textures[0];
+	int i = int(tc.u * 100) * 100 + int(tc.v * 100);
+	i = i >= 10000 ? 10000 : i;
+	int c = tex[i];
+
+	r += (c >> 16);
+	g += (c >> 8 & 0xff);
+	b += (c & 0xff);
+	
+
 	framebuffer[y][x] = (r << 16 | g << 8 | b);
 	zbuffer[y * width + x] = p.z;
 }
@@ -76,6 +86,7 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 {
 	float inv = (float)1 / 255;
 	Color color = { (foreground >> 16) * inv, (foreground >> 8 & 0xff) * inv, (foreground & 0xff) * inv };
+	Texcoord tex = {0.f, 0.f};
 
 	int x1, y1, x2, y2;
 	x1 = p1.x;
@@ -88,36 +99,36 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 	x = p1.x;
 
 	if (x1 == x2 && y1 == y2) {
-		drawPoint(p1, color);
+		drawPoint(p1, color, tex);
 	}
 	else if (x1 == x2) {
-		drawPoint(p1, color);
+		drawPoint(p1, color, tex);
 
 		int inc = (y1 < y2) ? 1 : -1;
 		while (1) {
 			y += inc;
 			if (int(y) == y2) break;
 			Vector p = {x, y, 0.f, 1.f};
-			drawPoint(p, color);
+			drawPoint(p, color, tex);
 		}
 
-		drawPoint(p2, color);
+		drawPoint(p2, color, tex);
 	}
 	else if (y1 == y2) {
-		drawPoint(p1, color);
+		drawPoint(p1, color, tex);
 		
 		int inc = (x1 < x2) ? 1 : -1;
 		while (1) {
 			x += inc;
 			if (int(x) == x2) break;
 			Vector p = { x, y, 0.f, 1.f };
-			drawPoint(p, color);
+			drawPoint(p, color, tex);
 		}
 
-		drawPoint(p2, color);
+		drawPoint(p2, color, tex);
 	}
 	else {
-		drawPoint(p1, color);
+		drawPoint(p1, color, tex);
 
 		float t = (float)abs(x2 - x1) / abs(y2 - y1);
 		int xinc = (p1.x < p2.x) ? 1 : -1;
@@ -126,10 +137,10 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 			y += yinc;
 			if (int(y) == y2) break;
 			x += t * xinc;
-			drawPoint({x,y,0.f,1.f}, color);
+			drawPoint({x,y,0.f,1.f}, color, tex);
 		}
 
-		drawPoint(p2, color);
+		drawPoint(p2, color, tex);
 	}
 }
 
@@ -146,6 +157,16 @@ int getTriangleInterp(const Vector& v1, const Vector& v2, const Vector& v3, cons
 
 	*u = a; *v = b;
 	return 1;
+}
+
+void VertexRhwInit(Vertex& v)
+{
+	v.rhw = 1 / v.pos.w;
+	v.color.r *= v.rhw;
+	v.color.g *= v.rhw;
+	v.color.b *= v.rhw;
+	v.tex.u *= v.rhw;
+	v.tex.v *= v.rhw;
 }
 
 void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
@@ -178,26 +199,40 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 	if (p2.y > max.y) max.y = p2.y;
 	if (p3.y > max.y) max.y = p3.y;
 
-	float inv_z1 = 1 / p1.z, inv_z2 = 1 / p2.z, inv_z3 = 1 / p3.z;
+	Vertex t1 = v1, t2 = v2, t3 = v3;
+	t1.pos = p1; t2.pos = p2; t3.pos = p3;
+	t1.pos.w = c1.w; t2.pos.w = c2.w; t3.pos.w = c3.w;
+
+	VertexRhwInit(t1);
+	VertexRhwInit(t2);
+	VertexRhwInit(t3);
+
 	for (int j = min.y; j < max.y; j++) {
 		for (int i = min.x; i < max.x; i++) {
 			Vector p = { i,j,0.f,1.f };
-			float u, v;
-			if (getTriangleInterp(p1, p2, p3, p, &u, &v)) {
-				float r = v1.color.r * u + v2.color.r * v + v3.color.r * (1 - u - v);
-				float g = v1.color.g * u + v2.color.g * v + v3.color.g * (1 - u - v);
-				float b = v1.color.b * u + v2.color.b * v + v3.color.b * (1 - u - v);
+			float c1, c2, c3;
+			if (getTriangleInterp(p1, p2, p3, p, &c1, &c2)) {
+				c3 = 1.f - c1 - c2;
 
-				// z 的倒数可以插值
-				float inv_z = inv_z1 * u + inv_z2 * v + inv_z3 * (1 - u - v);
+				// Rectification for Perspective
+				float w = 1 / (c1 * t1.rhw + c2 * t2.rhw + c3 * t3.rhw);
 
-				p.z = 1 / inv_z;
-				drawPoint(p,{ r,g,b } );
+				float r = t1.color.r * c1 + t2.color.r * c2 + t3.color.r * c3;
+				float g = t1.color.g * c1 + t2.color.g * c2 + t3.color.g * c3;
+				float b = t1.color.b * c1 + t2.color.b * c2 + t3.color.b * c3;
+
+				float u = t1.tex.u * c1 + t2.tex.u * c2 + t3.tex.u * c3;
+				float v = t1.tex.v * c1 + t2.tex.v * c2 + t3.tex.v * c3;
+
+				float z = t1.pos.z * t1.rhw * c1 + t2.pos.z * t2.rhw * c2 + t3.pos.z * t3.rhw * c3;
+				p.z = w * z;
+
+				drawPoint(p, { w * r, w * g, w * b }, { w * u, w * v});
 			}
 		}
 	}
 
-	drawLine(p1, p2);
-	drawLine(p1, p3);
-	drawLine(p2, p3);
+//	drawLine(p1, p2);
+//	drawLine(p1, p3);
+//	drawLine(p2, p3);
 }

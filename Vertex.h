@@ -3,9 +3,12 @@
 #include "math.h"
 
 struct Color { float r; float g; float b; };
+struct Texcoord { float u; float v; };
 
 struct Vertex
 {
-	Vector pos; // u,v color, rhw(归一化)
+	Vector pos;
 	Color color;
+	Texcoord tex;
+	float rhw; // 透视矫正
 };
