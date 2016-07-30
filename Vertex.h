@@ -10,5 +10,6 @@ struct Vertex
 	Vector pos;
 	Color color;
 	Texcoord tex;
+	Vector normal;
 	float rhw; // м╦йс╫цуЩ
 };

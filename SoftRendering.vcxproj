@@ -151,8 +151,8 @@
   <ItemGroup>
     <ClInclude Include="Config.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="Light.h" />
     <ClInclude Include="math.h" />
-    <ClInclude Include="Mesh.h" />
     <ClInclude Include="Screen.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Vertex.h" />

@@ -13,6 +13,7 @@
 #include "Transform.h"
 #include "Config.h"
 #include "Vertex.h"
+#include "Light.h"
 #include <fcntl.h>
 #include <io.h>
 #include <tchar.h>
@@ -101,7 +102,7 @@ void DrawColorTriangle()
 				float g = v1.color.g * u + v2.color.g * v + v3.color.g * (1 - u - v);
 				float b = v1.color.b * u + v2.color.b * v + v3.color.b * (1 - u - v);
 
-				device->drawPoint(p, { r,g,b }, {0.f, 0.f});
+				device->drawPoint(p, { r,g,b }, { 0.f, 0.f }, { 0.f, 0.f, 0.f });
 			}
 		}
 	}
@@ -167,20 +168,20 @@ int* CreateTexture()
 void DrawBox(float theta)
 {
 	Matrix m;
-	MatrixSetRotate(m, 0.f, 1.f, 1.f, theta);
+	MatrixSetRotate(m, 0.f, 1.0f, 1.f, theta);
 	transform->setWorld(m);
 	transform->update();
 
 	Vertex vs[8] = {
-		{{-1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 0.f} },
-		{{-1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f} },
-		{{ 1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f} },
-		{{ 1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f} },
+		{{-1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 0.f}, {-1.f,  1.f, -1.f, 0.f},  1.f },
+		{{-1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, {-1.f,  1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f,  1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, { 1.f,  1.f, -1.f, 0.f}, 1.f },
 
-		{{-1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 0.f} },
-		{{-1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f} },
-		{{ 1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f} },
-		{{ 1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f} },
+		{{-1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 0.f}, {-1.f, -1.f, -1.f, 0.f}, 1.f },
+		{{-1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, {-1.f, -1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f, -1.f, 0.f}, 1.f },
 	};
 
 	DrawPlane(vs[0], vs[1], vs[2], vs[3]);
@@ -236,9 +237,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 
 	textures[0] = CreateTexture();
 
+	Light light = { {-1.f, 1.f, -1.f, 0.f}, {1.f, 1.f, 1.f} };
+	VectorNormalize(light.direction);
+
 	uint32* wfb = (uint32*)(screen->getFrameBuffer());
 	device = new Device();
-	device->init(WINDOW_WIDTH, WINDOW_HEIGHT, wfb, transform, textures);
+	device->init(WINDOW_WIDTH, WINDOW_HEIGHT, wfb, transform, textures, &light);
 
 	float theta = 1.f;
 	float dist = 3.f;

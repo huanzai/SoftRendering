@@ -1,6 +1,7 @@
 #include "Device.h"
 #include "Vertex.h"
 #include "Transform.h"
+#include "Light.h"
 #include <Windows.h>
 #include <math.h>
 
@@ -9,7 +10,7 @@ Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(N
 {
 }
 
-void Device::init(int w, int h, uint32* fb, Transform* ts, int** tex)
+void Device::init(int w, int h, uint32* fb, Transform* ts, int** tex, Light* l)
 {
 	width = w;
 	height = h;
@@ -28,6 +29,7 @@ void Device::init(int w, int h, uint32* fb, Transform* ts, int** tex)
 
 	transform = ts;
 	textures = tex;
+	light = l;
 }
 
 void Device::clear()
@@ -54,7 +56,7 @@ void Device::close()
 	}
 }
 
-void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc)
+void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, const Vector& normal)
 {
 	int y = (int)p.y;
 	int x = (int)p.x;
@@ -64,21 +66,48 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc)
 	if (y >= height) return;
 	if (x >= width) return;
 
-	int r = color.r * 255;
-	int g = color.g * 255;
-	int b = color.b * 255;
+	// rgb
+	//int r = color.r * 255;
+	//int g = color.g * 255;
+	//int b = color.b * 255;
 
+	// tex
 	int *tex = textures[0];
 	int i = int(tc.u * 100) * 100 + int(tc.v * 100);
 	i = i >= 10000 ? 10000 : i;
 	int c = tex[i];
+	float inv = (float)1 / 255;
+	Color tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
 
-	r += (c >> 16);
-	g += (c >> 8 & 0xff);
-	b += (c & 0xff);
-	
+	// light
+	float n_dot_l = VectorDotProduct(light->direction, normal);
 
-	framebuffer[y][x] = (r << 16 | g << 8 | b);
+	// 默认环境光
+	Color ambient = { 1.0f, 1.0f, 1.0f }; 
+	float intensity = 0.5;
+
+	// 环境光的影响
+	ambient.r *= intensity * tex_color.r;
+	ambient.g *= intensity * tex_color.g;
+	ambient.b *= intensity * tex_color.b;
+
+	// blend
+	Color diffuse = { 0.f, 0.f, 0.f };
+	if (n_dot_l > 0) {
+		diffuse.r = tex_color.r * n_dot_l;
+		diffuse.g = tex_color.g * n_dot_l;
+		diffuse.b = tex_color.b * n_dot_l;
+	}
+
+	ambient.r += diffuse.r;
+	ambient.g += diffuse.g;
+	ambient.b += diffuse.b;
+
+	ambient.r = ambient.r > 1.f ? 1.f : ambient.r;
+	ambient.g = ambient.g > 1.f ? 1.f :	ambient.g;
+	ambient.b =	ambient.b > 1.f ? 1.f : ambient.b;
+
+	framebuffer[y][x] = (int(ambient.r * 255) << 16 | int(ambient.g * 255) << 8 | int(ambient.b * 255));
 	zbuffer[y * width + x] = p.z;
 }
 
@@ -87,6 +116,7 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 	float inv = (float)1 / 255;
 	Color color = { (foreground >> 16) * inv, (foreground >> 8 & 0xff) * inv, (foreground & 0xff) * inv };
 	Texcoord tex = {0.f, 0.f};
+	Vector normal = { 0.f, 0.f, 0.f };
 
 	int x1, y1, x2, y2;
 	x1 = p1.x;
@@ -99,36 +129,36 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 	x = p1.x;
 
 	if (x1 == x2 && y1 == y2) {
-		drawPoint(p1, color, tex);
+		drawPoint(p1, color, tex, normal);
 	}
 	else if (x1 == x2) {
-		drawPoint(p1, color, tex);
+		drawPoint(p1, color, tex, normal);
 
 		int inc = (y1 < y2) ? 1 : -1;
 		while (1) {
 			y += inc;
 			if (int(y) == y2) break;
 			Vector p = {x, y, 0.f, 1.f};
-			drawPoint(p, color, tex);
+			drawPoint(p, color, tex, normal);
 		}
 
-		drawPoint(p2, color, tex);
+		drawPoint(p2, color, tex, normal);
 	}
 	else if (y1 == y2) {
-		drawPoint(p1, color, tex);
+		drawPoint(p1, color, tex,normal);
 		
 		int inc = (x1 < x2) ? 1 : -1;
 		while (1) {
 			x += inc;
 			if (int(x) == x2) break;
 			Vector p = { x, y, 0.f, 1.f };
-			drawPoint(p, color, tex);
+			drawPoint(p, color, tex, normal);
 		}
 
-		drawPoint(p2, color, tex);
+		drawPoint(p2, color, tex, normal);
 	}
 	else {
-		drawPoint(p1, color, tex);
+		drawPoint(p1, color, tex, normal);
 
 		float t = (float)abs(x2 - x1) / abs(y2 - y1);
 		int xinc = (p1.x < p2.x) ? 1 : -1;
@@ -137,10 +167,10 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 			y += yinc;
 			if (int(y) == y2) break;
 			x += t * xinc;
-			drawPoint({x,y,0.f,1.f}, color, tex);
+			drawPoint({x,y,0.f,1.f}, color, tex, normal);
 		}
 
-		drawPoint(p2, color, tex);
+		drawPoint(p2, color, tex, normal);
 	}
 }
 
@@ -167,15 +197,23 @@ void VertexRhwInit(Vertex& v)
 	v.color.b *= v.rhw;
 	v.tex.u *= v.rhw;
 	v.tex.v *= v.rhw;
+	v.normal.x *= v.rhw;
+	v.normal.y *= v.rhw;
+	v.normal.z *= v.rhw;
 }
 
 void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 {
 	Vector c1, c2, c3;
+	Vector n1, n2, n3;
 
 	transform->apply(c1, v1.pos);
 	transform->apply(c2, v2.pos);
 	transform->apply(c3, v3.pos);
+
+	transform->apply(n1, v1.normal);
+	transform->apply(n2, v2.normal);
+	transform->apply(n3, v3.normal);
 
 	if (transform->checkCvv(c1)) return;
 	if (transform->checkCvv(c2)) return;
@@ -201,6 +239,7 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 
 	Vertex t1 = v1, t2 = v2, t3 = v3;
 	t1.pos = p1; t2.pos = p2; t3.pos = p3;
+	t1.normal = n1; t2.normal = n2; t3.normal = n3;
 	t1.pos.w = c1.w; t2.pos.w = c2.w; t3.pos.w = c3.w;
 
 	VertexRhwInit(t1);
@@ -224,10 +263,16 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 				float u = t1.tex.u * c1 + t2.tex.u * c2 + t3.tex.u * c3;
 				float v = t1.tex.v * c1 + t2.tex.v * c2 + t3.tex.v * c3;
 
+				float nx = t1.normal.x * c1 + t2.normal.x * c2 + t3.normal.x * c3;
+				float ny = t1.normal.y * c1 + t2.normal.y * c2 + t3.normal.y * c3;
+				float nz = t1.normal.z * c1 + t2.normal.z * c2 + t3.normal.z * c3;
+				Vector normal = { w*nx, w*ny, w*nz };
+				VectorNormalize(normal);
+
 				float z = t1.pos.z * t1.rhw * c1 + t2.pos.z * t2.rhw * c2 + t3.pos.z * t3.rhw * c3;
 				p.z = w * z;
 
-				drawPoint(p, { w * r, w * g, w * b }, { w * u, w * v});
+				drawPoint(p, { w * r, w * g, w * b }, { w * u, w * v }, normal);
 			}
 		}
 	}
