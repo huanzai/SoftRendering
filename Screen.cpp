@@ -2,7 +2,8 @@
 #include <windows.h>
 #include <tchar.h>
 
-int ScreenKeys[512]; // 记录键盘是否按下
+int ScreenKeys[512]; // 记录键盘状态
+int ScreenUpKeys[512]; // 记录键盘是否被放开
 int Exit = 0;
 
 static LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -10,7 +11,7 @@ static LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg) {
 	case WM_CLOSE:Exit = 1; break;
 	case WM_KEYDOWN:ScreenKeys[wParam & 511] = 1; break;
-	case WM_KEYUP:ScreenKeys[wParam & 511] = 0; break;
+	case WM_KEYUP:ScreenKeys[wParam & 511] = 0; ScreenUpKeys[wParam & 511] = 1; break;
 	default:return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 	return 0;
@@ -106,6 +107,13 @@ void Screen::close()
 int Screen::isKeyPressed(int key)
 {
 	return ScreenKeys[key & 511];
+}
+
+int Screen::getKeyUpEvent(int key)
+{
+	int r = ScreenUpKeys[key];
+	ScreenUpKeys[key] = 0;
+	return r;
 }
 
 int Screen::isExit()

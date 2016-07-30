@@ -20,6 +20,8 @@ public:
 	void clear();
 	void close();
 
+	void setState(int s);
+	void autoChangeState();
 	void drawPoint(const Vector& p, const Color& color, const Texcoord& tc, const Vector& normal);
 	void drawLine(const Vector& p1, const Vector& p2);
 	void drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3);
@@ -34,4 +36,5 @@ private:
 	uint32 foreground; // Ïß¿òÑÕÉ«
 	int width;
 	int height; 
+	int state;
 };

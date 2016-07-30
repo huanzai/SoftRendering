@@ -173,15 +173,15 @@ void DrawBox(float theta)
 	transform->update();
 
 	Vertex vs[8] = {
-		{{-1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 0.f}, {-1.f,  1.f, -1.f, 0.f},  1.f },
-		{{-1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, {-1.f,  1.f,  1.f, 0.f}, 1.f },
-		{{ 1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f,  1.f,  1.f, 0.f}, 1.f },
-		{{ 1.f,  1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, { 1.f,  1.f, -1.f, 0.f}, 1.f },
+		{{-1.f,  1.f, -1.f, 1.f}, {1.0f, 0.0f, 0.0f}, {0.f, 0.f}, {-1.f,  1.f, -1.f, 0.f},  1.f },
+		{{-1.f,  1.f,  1.f, 1.f}, {0.0f, 1.0f, 0.0f}, {0.f, 1.f}, {-1.f,  1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f,  1.f,  1.f, 1.f}, {0.0f, 0.0f, 1.0f}, {1.f, 1.f}, { 1.f,  1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f,  1.f, -1.f, 1.f}, {1.0f, 1.0f, 0.0f}, {0.f, 1.f}, { 1.f,  1.f, -1.f, 0.f}, 1.f },
 
-		{{-1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 0.f}, {-1.f, -1.f, -1.f, 0.f}, 1.f },
-		{{-1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {0.f, 1.f}, {-1.f, -1.f,  1.f, 0.f}, 1.f },
-		{{ 1.f, -1.f,  1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f,  1.f, 0.f}, 1.f },
-		{{ 1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f, -1.f, 0.f}, 1.f },
+		{{-1.f, -1.f, -1.f, 1.f}, {0.0f, 0.0f, 1.0f}, {1.f, 0.f}, {-1.f, -1.f, -1.f, 0.f}, 1.f },
+		{{-1.f, -1.f,  1.f, 1.f}, {1.0f, 1.0f, 0.0f}, {0.f, 1.f}, {-1.f, -1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f, -1.f,  1.f, 1.f}, {1.0f, 0.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f,  1.f, 0.f}, 1.f },
+		{{ 1.f, -1.f, -1.f, 1.f}, {0.0f, 1.0f, 0.0f}, {1.f, 1.f}, { 1.f, -1.f, -1.f, 0.f}, 1.f },
 	};
 
 	DrawPlane(vs[0], vs[1], vs[2], vs[3]);
@@ -243,6 +243,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 	uint32* wfb = (uint32*)(screen->getFrameBuffer());
 	device = new Device();
 	device->init(WINDOW_WIDTH, WINDOW_HEIGHT, wfb, transform, textures, &light);
+	device->setState(1);
 
 	float theta = 1.f;
 	float dist = 3.f;
@@ -261,6 +262,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 			theta += 0.01f;
 		if (screen->isKeyPressed(VK_RIGHT)) 
 			theta -= 0.01f;
+
+		if (screen->getKeyUpEvent(VK_SPACE)) 
+			device->autoChangeState();
+			
 
 		//DrawLine();
 		DrawBox(theta);

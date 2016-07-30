@@ -5,8 +5,12 @@
 #include <Windows.h>
 #include <math.h>
 
+#define STATE_DRAW_TEX 1
+#define STATE_DRAW_LINE 2
+#define STATE_DRAW_COLOR 4
+
 Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(NULL), 
-	background(0), foreground(0), width(0), height(0)
+	background(0), foreground(0), width(0), height(0), state(0)
 {
 }
 
@@ -56,6 +60,31 @@ void Device::close()
 	}
 }
 
+void Device::setState(int s)
+{
+	state = s;
+}
+
+void Device::autoChangeState()
+{
+	state += 1;
+}
+
+int GetRealState(int s)
+{
+	s = s % 3;
+	if (s == 0) {
+		return STATE_DRAW_COLOR;
+	}
+	else if (s == 1) {
+		return STATE_DRAW_COLOR | STATE_DRAW_LINE;
+	}
+	else if (s == 2) {
+		return STATE_DRAW_COLOR | STATE_DRAW_TEX;
+	}
+	return 0;
+}
+
 void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, const Vector& normal)
 {
 	int y = (int)p.y;
@@ -66,48 +95,58 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 	if (y >= height) return;
 	if (x >= width) return;
 
+	int fcolor = 0;
+
+	int s = GetRealState(state);
 	// rgb
-	//int r = color.r * 255;
-	//int g = color.g * 255;
-	//int b = color.b * 255;
+	if (s & STATE_DRAW_TEX) {
+		// tex
+		int *tex = textures[0];
+		int i = int(tc.u * 100) * 100 + int(tc.v * 100);
+		i = i >= 10000 ? 10000 : i;
+		int c = tex[i];
+		float inv = (float)1 / 255;
+		Color tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
 
-	// tex
-	int *tex = textures[0];
-	int i = int(tc.u * 100) * 100 + int(tc.v * 100);
-	i = i >= 10000 ? 10000 : i;
-	int c = tex[i];
-	float inv = (float)1 / 255;
-	Color tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
+		// light
+		float n_dot_l = VectorDotProduct(light->direction, normal);
 
-	// light
-	float n_dot_l = VectorDotProduct(light->direction, normal);
+		// 默认环境光
+		Color ambient = { 1.0f, 1.0f, 1.0f };
+		float intensity = 0.5;
 
-	// 默认环境光
-	Color ambient = { 1.0f, 1.0f, 1.0f }; 
-	float intensity = 0.5;
+		// 环境光的影响
+		ambient.r *= intensity * tex_color.r;
+		ambient.g *= intensity * tex_color.g;
+		ambient.b *= intensity * tex_color.b;
 
-	// 环境光的影响
-	ambient.r *= intensity * tex_color.r;
-	ambient.g *= intensity * tex_color.g;
-	ambient.b *= intensity * tex_color.b;
+		// blend
+		Color diffuse = { 0.f, 0.f, 0.f };
+		if (n_dot_l > 0) {
+			diffuse.r = tex_color.r * n_dot_l;
+			diffuse.g = tex_color.g * n_dot_l;
+			diffuse.b = tex_color.b * n_dot_l;
+		}
 
-	// blend
-	Color diffuse = { 0.f, 0.f, 0.f };
-	if (n_dot_l > 0) {
-		diffuse.r = tex_color.r * n_dot_l;
-		diffuse.g = tex_color.g * n_dot_l;
-		diffuse.b = tex_color.b * n_dot_l;
+		ambient.r += diffuse.r;
+		ambient.g += diffuse.g;
+		ambient.b += diffuse.b;
+
+		ambient.r = ambient.r > 1.f ? 1.f : ambient.r;
+		ambient.g = ambient.g > 1.f ? 1.f : ambient.g;
+		ambient.b = ambient.b > 1.f ? 1.f : ambient.b;
+
+		fcolor = (int(ambient.r * 255) << 16 | int(ambient.g * 255) << 8 | int(ambient.b * 255));
+	} else if (s & STATE_DRAW_COLOR) {
+		int r = color.r * 255;
+		int g = color.g * 255;
+		int b = color.b * 255;
+
+		fcolor = (r << 16) | (g << 8) | b;
 	}
 
-	ambient.r += diffuse.r;
-	ambient.g += diffuse.g;
-	ambient.b += diffuse.b;
 
-	ambient.r = ambient.r > 1.f ? 1.f : ambient.r;
-	ambient.g = ambient.g > 1.f ? 1.f :	ambient.g;
-	ambient.b =	ambient.b > 1.f ? 1.f : ambient.b;
-
-	framebuffer[y][x] = (int(ambient.r * 255) << 16 | int(ambient.g * 255) << 8 | int(ambient.b * 255));
+	framebuffer[y][x] = fcolor;
 	zbuffer[y * width + x] = p.z;
 }
 
@@ -225,59 +264,64 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 	transform->homogenize(p2, c2);
 	transform->homogenize(p3, c3);
 
-	min = p1; max = p1;
+	int s = GetRealState(state);
+	if (!(s & STATE_DRAW_LINE)) {
+		min = p1; max = p1;
 
-	if (p2.x < min.x) min.x = p2.x;
-	if (p3.x < min.x) min.x = p3.x;
-	if (p2.y < min.y) min.y = p2.y;
-	if (p3.y < min.y) min.y = p3.y;
+		if (p2.x < min.x) min.x = p2.x;
+		if (p3.x < min.x) min.x = p3.x;
+		if (p2.y < min.y) min.y = p2.y;
+		if (p3.y < min.y) min.y = p3.y;
 
-	if (p2.x > max.x) max.x = p2.x;
-	if (p3.x > max.x) max.x = p3.x;
-	if (p2.y > max.y) max.y = p2.y;
-	if (p3.y > max.y) max.y = p3.y;
+		if (p2.x > max.x) max.x = p2.x;
+		if (p3.x > max.x) max.x = p3.x;
+		if (p2.y > max.y) max.y = p2.y;
+		if (p3.y > max.y) max.y = p3.y;
 
-	Vertex t1 = v1, t2 = v2, t3 = v3;
-	t1.pos = p1; t2.pos = p2; t3.pos = p3;
-	t1.normal = n1; t2.normal = n2; t3.normal = n3;
-	t1.pos.w = c1.w; t2.pos.w = c2.w; t3.pos.w = c3.w;
+		Vertex t1 = v1, t2 = v2, t3 = v3;
+		t1.pos = p1; t2.pos = p2; t3.pos = p3;
+		t1.normal = n1; t2.normal = n2; t3.normal = n3;
+		t1.pos.w = c1.w; t2.pos.w = c2.w; t3.pos.w = c3.w;
 
-	VertexRhwInit(t1);
-	VertexRhwInit(t2);
-	VertexRhwInit(t3);
+		VertexRhwInit(t1);
+		VertexRhwInit(t2);
+		VertexRhwInit(t3);
 
-	for (int j = min.y; j < max.y; j++) {
-		for (int i = min.x; i < max.x; i++) {
-			Vector p = { i,j,0.f,1.f };
-			float c1, c2, c3;
-			if (getTriangleInterp(p1, p2, p3, p, &c1, &c2)) {
-				c3 = 1.f - c1 - c2;
+		for (int j = min.y; j < max.y; j++) {
+			for (int i = min.x; i < max.x; i++) {
+				Vector p = { i,j,0.f,1.f };
+				float c1, c2, c3;
+				if (getTriangleInterp(p1, p2, p3, p, &c1, &c2)) {
+					c3 = 1.f - c1 - c2;
 
-				// Rectification for Perspective
-				float w = 1 / (c1 * t1.rhw + c2 * t2.rhw + c3 * t3.rhw);
+					// Rectification for Perspective
+					float w = 1 / (c1 * t1.rhw + c2 * t2.rhw + c3 * t3.rhw);
 
-				float r = t1.color.r * c1 + t2.color.r * c2 + t3.color.r * c3;
-				float g = t1.color.g * c1 + t2.color.g * c2 + t3.color.g * c3;
-				float b = t1.color.b * c1 + t2.color.b * c2 + t3.color.b * c3;
+					float r = t1.color.r * c1 + t2.color.r * c2 + t3.color.r * c3;
+					float g = t1.color.g * c1 + t2.color.g * c2 + t3.color.g * c3;
+					float b = t1.color.b * c1 + t2.color.b * c2 + t3.color.b * c3;
 
-				float u = t1.tex.u * c1 + t2.tex.u * c2 + t3.tex.u * c3;
-				float v = t1.tex.v * c1 + t2.tex.v * c2 + t3.tex.v * c3;
+					float u = t1.tex.u * c1 + t2.tex.u * c2 + t3.tex.u * c3;
+					float v = t1.tex.v * c1 + t2.tex.v * c2 + t3.tex.v * c3;
 
-				float nx = t1.normal.x * c1 + t2.normal.x * c2 + t3.normal.x * c3;
-				float ny = t1.normal.y * c1 + t2.normal.y * c2 + t3.normal.y * c3;
-				float nz = t1.normal.z * c1 + t2.normal.z * c2 + t3.normal.z * c3;
-				Vector normal = { w*nx, w*ny, w*nz };
-				VectorNormalize(normal);
+					float nx = t1.normal.x * c1 + t2.normal.x * c2 + t3.normal.x * c3;
+					float ny = t1.normal.y * c1 + t2.normal.y * c2 + t3.normal.y * c3;
+					float nz = t1.normal.z * c1 + t2.normal.z * c2 + t3.normal.z * c3;
+					Vector normal = { w*nx, w*ny, w*nz };
+					VectorNormalize(normal);
 
-				float z = t1.pos.z * t1.rhw * c1 + t2.pos.z * t2.rhw * c2 + t3.pos.z * t3.rhw * c3;
-				p.z = w * z;
+					float z = t1.pos.z * t1.rhw * c1 + t2.pos.z * t2.rhw * c2 + t3.pos.z * t3.rhw * c3;
+					p.z = w * z;
 
-				drawPoint(p, { w * r, w * g, w * b }, { w * u, w * v }, normal);
+					drawPoint(p, { w * r, w * g, w * b }, { w * u, w * v }, normal);
+				}
 			}
 		}
 	}
+	else {
+		drawLine(p1, p2);
+		drawLine(p1, p3);
+		drawLine(p2, p3);
+	}
 
-//	drawLine(p1, p2);
-//	drawLine(p1, p3);
-//	drawLine(p2, p3);
 }

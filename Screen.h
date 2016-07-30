@@ -11,6 +11,7 @@ public:
 	void dispatch(); // 派发消息
 	void close(); // 关闭
 	int isKeyPressed(int key); // 键是否被按下
+	int getKeyUpEvent(int key);
 	int isExit(); // 是否关闭
 	LPVOID getFrameBuffer(); 
 
