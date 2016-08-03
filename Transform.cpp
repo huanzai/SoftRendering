@@ -48,6 +48,15 @@ int Transform::checkCvv(const Vector& v)
 	return check;
 }
 
+int Transform::checkBackCulling(const Vector& v)
+{
+	float dot = VectorDotProduct({0.f, 0.f, -1.f, 0.f}, v);
+	if (dot > 0) {
+		return 0;
+	}
+	return 1;
+}
+
 void Transform::setView(const Matrix& m)
 {
 	view = m;

@@ -12,6 +12,7 @@ public:
 	void apply(Vector& b, const Vector& a);
 	void homogenize(Vector& b, const Vector& a);
 	int checkCvv(const Vector& v);
+	int checkBackCulling(const Vector& v);
 
 	void setWorld(const Matrix& m);
 	void setView(const Matrix& m);

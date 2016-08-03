@@ -250,19 +250,26 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 	transform->apply(c2, v2.pos);
 	transform->apply(c3, v3.pos);
 
-	transform->apply(n1, v1.normal);
-	transform->apply(n2, v2.normal);
-	transform->apply(n3, v3.normal);
-
 	if (transform->checkCvv(c1)) return;
 	if (transform->checkCvv(c2)) return;
 	if (transform->checkCvv(c3)) return;
+
+	transform->apply(n1, v1.normal);
+	transform->apply(n2, v2.normal);
+	transform->apply(n3, v3.normal);
 
 	Vector p1, p2, p3, min, max;
 
 	transform->homogenize(p1, c1);
 	transform->homogenize(p2, c2);
 	transform->homogenize(p3, c3);
+
+	Vector s1, s2, pn;
+	VectorSub(s1, p2, p1);
+	VectorSub(s2, p3, p2);
+	VectorCrossProduct(pn, s2, s1);
+	VectorNormalize(pn);
+	if (transform->checkBackCulling(pn)) return;
 
 	int s = GetRealState(state);
 	if (!(s & STATE_DRAW_LINE)) {
