@@ -189,7 +189,7 @@ void DrawBox(float theta)
 	DrawPlane(vs[2], vs[6], vs[7], vs[3]);
 	DrawPlane(vs[5], vs[1], vs[0], vs[4]);
 	DrawPlane(vs[2], vs[1], vs[5], vs[6]);
-	DrawPlane(vs[6], vs[7], vs[4], vs[5]);
+	DrawPlane(vs[6], vs[5], vs[4], vs[7]);
 }
 
 void DrawTetrahedron(float theta)
