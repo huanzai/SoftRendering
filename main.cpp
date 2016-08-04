@@ -221,6 +221,16 @@ void SetCamera(float x, float y, float z)
 	transform->update();
 }
 
+void TransformLight(Light& light)
+{
+	Matrix m;
+	MatrixSetRotate(m, 0.f, 1.0f, 0.f, 0);
+	transform->setWorld(m);
+	transform->update();
+
+	transform->apply(light.direction, { -1.f, 1.f, -1.f, 0.f });
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
 {
 	InitConsoleWindow();
@@ -252,6 +262,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 		device->clear();
 		screen->dispatch();
 		SetCamera(0.f, 0.f, dist);
+
+		TransformLight(light);
 
 		if (screen->isKeyPressed(VK_UP))
 			dist -= 0.01f;
