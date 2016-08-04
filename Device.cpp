@@ -90,10 +90,10 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 	int y = (int)p.y;
 	int x = (int)p.x;
 
-	if (zbuffer[y * width + x] < p.z) return;
-
 	if (y >= height) return;
 	if (x >= width) return;
+
+	if (zbuffer[y * width + x] < p.z) return;
 
 	int fcolor = 0;
 
@@ -176,7 +176,8 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 		int inc = (y1 < y2) ? 1 : -1;
 		while (1) {
 			y += inc;
-			if (int(y) == y2) break;
+			if (inc ==  1 && y >= y2) break;
+			if (inc == -1 && y <= y2) break;
 			Vector p = {x, y, 0.f, 1.f};
 			drawPoint(p, color, tex, normal);
 		}
@@ -189,7 +190,8 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 		int inc = (x1 < x2) ? 1 : -1;
 		while (1) {
 			x += inc;
-			if (int(x) == x2) break;
+			if (inc ==  1 && x >= x2) break;
+			if (inc == -1 && x <= x2) break;
 			Vector p = { x, y, 0.f, 1.f };
 			drawPoint(p, color, tex, normal);
 		}
@@ -204,7 +206,8 @@ void Device::drawLine(const Vector& p1, const Vector& p2)
 		int yinc = (p1.y < p2.y) ? 1 : -1;
 		while (1) {
 			y += yinc;
-			if (int(y) == y2) break;
+			if (yinc ==  1 && y >= y2) break;
+			if (yinc == -1 && y <= y2) break;
 			x += t * xinc;
 			drawPoint({x,y,0.f,1.f}, color, tex, normal);
 		}
