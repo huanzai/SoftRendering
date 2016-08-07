@@ -9,8 +9,11 @@
 #define STATE_DRAW_LINE 2
 #define STATE_DRAW_COLOR 4
 
+#define INTERP_LINEAR 0
+#define INTERP_BILINEAR 1
+
 Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(NULL), 
-	background(0), foreground(0), width(0), height(0), state(0)
+	background(0), foreground(0), width(0), height(0), state(0), interp(0)
 {
 }
 
@@ -68,6 +71,16 @@ void Device::setState(int s)
 void Device::autoChangeState()
 {
 	state += 1;
+}
+
+void Device::autoChangeInterp()
+{
+	if (interp == INTERP_LINEAR) {
+		interp = INTERP_BILINEAR;
+	}
+	else {
+		interp = INTERP_LINEAR;
+	}
 }
 
 int GetRealState(int s)
@@ -153,7 +166,7 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 		// tex
 		int *tex = textures[0];
 		Color tex_color;
-		if (false) {
+		if (interp == INTERP_LINEAR) {
 			int i = int(tc.u * 100) * 100 + int(tc.v * 100);
 			i = i >= 10000 ? 10000 : i;
 			int c = tex[i];

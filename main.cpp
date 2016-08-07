@@ -192,6 +192,23 @@ void DrawBox(float theta)
 	DrawPlane(vs[6], vs[5], vs[4], vs[7]);
 }
 
+void DrawPlane(float theta)
+{
+	Matrix m;
+	MatrixSetRotate(m, 1.f, 0.0f, 0.f, theta);
+	transform->setWorld(m);
+	transform->update();
+
+	Vertex vs[4] = { 
+		{{-1.f, 0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f, 0.f}, {0.f, 1.f, 0.f, 0.f}, 1.f }, 
+		{{-1.f, 0.f, 10.f, 1.f}, {0.f, 0.5f, 0.f}, {0.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, 1.f }, 
+		{{ 1.f, 0.f, 10.f, 1.f}, {0.f, 0.5f, 0.f}, {1.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, 1.f }, 
+		{{ 1.f, 0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, 1.f },
+	};
+
+	DrawPlane(vs[0], vs[1], vs[2], vs[3]);
+}
+
 void DrawTetrahedron(float theta)
 {
 	Matrix m;
@@ -256,7 +273,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 	device->setState(1);
 
 	float theta = 1.f;
-	float dist = 3.f;
+	float dist = -3.f;
 
 	while (!screen->isExit()){
 		device->clear();
@@ -278,9 +295,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 		if (screen->getKeyUpEvent(VK_SPACE)) 
 			device->autoChangeState();
 			
+		if (screen->getKeyUpEvent(0x4A)) // J key
+			device->autoChangeInterp();
 
 		//DrawLine();
 		DrawBox(theta);
+		//DrawPlane(theta);
 		//DrawTetrahedron(theta);
 		//DrawColorTriangle();
 
