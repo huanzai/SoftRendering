@@ -9,7 +9,7 @@
 #define STATE_DRAW_LINE 2
 #define STATE_DRAW_COLOR 4
 
-#define INTERP_LINEAR 0
+#define INTERP_NONE 0
 #define INTERP_BILINEAR 1
 
 Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(NULL), 
@@ -75,11 +75,11 @@ void Device::autoChangeState()
 
 void Device::autoChangeInterp()
 {
-	if (interp == INTERP_LINEAR) {
+	if (interp == INTERP_NONE) {
 		interp = INTERP_BILINEAR;
 	}
 	else {
-		interp = INTERP_LINEAR;
+		interp = INTERP_NONE;
 	}
 }
 
@@ -166,7 +166,7 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 		// tex
 		int *tex = textures[0];
 		Color tex_color;
-		if (interp == INTERP_LINEAR) {
+		if (interp == INTERP_NONE) {
 			int i = int(tc.u * 100) * 100 + int(tc.v * 100);
 			i = i >= 10000 ? 10000 : i;
 			int c = tex[i];
