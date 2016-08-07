@@ -85,6 +85,56 @@ int GetRealState(int s)
 	return 0;
 }
 
+float inv = (float)1 / 255;
+Color BilinearInterp(int *tex, float u, float v)
+{
+	float y = u * 100, x = v * 100;
+
+	int x0 = floor(x), y0 = floor(y);
+	int x1 = ceil(x), y1 = ceil(y);
+
+	y0 = y0 < 0.f ? 0.f : y0;
+	x0 = x0 < 0.f ? 0.f : x0;
+	y1 = y1 < 0.f ? 0.f : y1;
+	x1 = x1 < 0.f ? 0.f : x1;
+	y0 = y0 > 99.f ? 99.f : y0;
+	x0 = x0 > 99.f ? 99.f : x0;
+	y1 = y1 > 99.f ? 99.f : y1;
+	x1 = x1 > 99.f ? 99.f : x1;
+
+	if (x0 == x1) {
+		if (x0 <= 0.f) {
+			x1 = x0 + 1;
+		}
+		else {
+			x0 = x1 - 1;
+		}
+	}
+	if (y0 == y1) {
+		if (y0 <= 0.f) {
+			y1 = y0 + 1;
+		}
+		else {
+			y0 = y1 - 1;
+		}
+	}
+
+	int c00 = tex[y0 * 100 + x0];
+	int c01 = tex[y0 * 100 + x1];
+	int c10 = tex[y1 * 100 + x0];
+	int c11 = tex[y1 * 100 + x1];
+
+	float w00 = (y1 - y) * (x1 - x);
+	float w01 = (y1 - y) * (x - x0);
+	float w10 = (y - y0) * (x1 - x);
+	float w11 = (y - y0) * (x - x0);
+
+	Color c = {(c00 >> 16) * inv * w00 + (c01 >> 16) * inv * w01 + (c10 >> 16) * inv * w10 + (c11 >> 16) * inv * w11,
+		    (c00 >> 8 & 0xff) * inv * w00 + (c01 >> 8 & 0xff) * inv * w01 + (c10 >> 8 & 0xff) * inv * w10 + (c11 >> 8 & 0xff) * inv * w11,
+			(c00 & 0xff) * inv * w00 + (c01 & 0xff) * inv * w01 + (c10 & 0xff) * inv * w10 + (c11 & 0xff) * inv * w11};
+	return c;
+}
+
 void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, const Vector& normal)
 {
 	int y = (int)p.y;
@@ -102,11 +152,17 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 	if (s & STATE_DRAW_TEX) {
 		// tex
 		int *tex = textures[0];
-		int i = int(tc.u * 100) * 100 + int(tc.v * 100);
-		i = i >= 10000 ? 10000 : i;
-		int c = tex[i];
-		float inv = (float)1 / 255;
-		Color tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
+		Color tex_color;
+		if (false) {
+			int i = int(tc.u * 100) * 100 + int(tc.v * 100);
+			i = i >= 10000 ? 10000 : i;
+			int c = tex[i];
+			float inv = (float)1 / 255;
+			tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
+		}
+		else {
+			tex_color = BilinearInterp(tex, tc.u, tc.v);
+		}
 
 		// light
 		float n_dot_l = VectorDotProduct(light->direction, normal);
