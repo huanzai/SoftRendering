@@ -248,6 +248,9 @@ void TransformLight(Light& light)
 	transform->apply(light.direction, { -1.f, 1.f, -1.f, 0.f });
 }
 
+#define VK_J 0x4A
+#define VK_K 0x4B
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
 {
 	InitConsoleWindow();
@@ -295,8 +298,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 		if (screen->getKeyUpEvent(VK_SPACE)) 
 			device->autoChangeState();
 			
-		if (screen->getKeyUpEvent(0x4A)) // J key
+		if (screen->getKeyUpEvent(VK_J)) // J key
 			device->autoChangeInterp();
+
+		if (screen->getKeyUpEvent(VK_K)) // K key
+			device->autoChangeCullMode();
 
 		//DrawLine();
 		DrawBox(theta);

@@ -23,6 +23,7 @@ public:
 	void setState(int s);
 	void autoChangeState();
 	void autoChangeInterp();
+	void autoChangeCullMode();
 	void drawPoint(const Vector& p, const Color& color, const Texcoord& tc, const Vector& normal);
 	void drawLine(const Vector& p1, const Vector& p2);
 	void drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3);
@@ -39,4 +40,5 @@ private:
 	int height; 
 	int state;
 	int interp;
+	int cullmode;
 };

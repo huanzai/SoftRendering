@@ -12,8 +12,11 @@
 #define INTERP_NONE 0
 #define INTERP_BILINEAR 1
 
+#define CULL_MODE_NONE 0
+#define CULL_MODE_BACK 1
+
 Device::Device() : transform(NULL), textures(NULL), framebuffer(NULL), zbuffer(NULL), 
-	background(0), foreground(0), width(0), height(0), state(0), interp(0)
+	background(0), foreground(0), width(0), height(0), state(0), interp(0), cullmode(0)
 {
 }
 
@@ -80,6 +83,16 @@ void Device::autoChangeInterp()
 	}
 	else {
 		interp = INTERP_NONE;
+	}
+}
+
+void Device::autoChangeCullMode()
+{
+	if (cullmode == CULL_MODE_NONE) {
+		cullmode = CULL_MODE_BACK;
+	}
+	else {
+		cullmode = CULL_MODE_NONE;
 	}
 }
 
@@ -336,12 +349,14 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 	transform->homogenize(p2, c2);
 	transform->homogenize(p3, c3);
 
-	Vector s1, s2, pn;
-	VectorSub(s1, p2, p1);
-	VectorSub(s2, p3, p2);
-	VectorCrossProduct(pn, s2, s1);
-	VectorNormalize(pn);
-	if (transform->checkBackCulling(pn)) return;
+	if (cullmode == CULL_MODE_BACK) {
+		Vector s1, s2, pn;
+		VectorSub(s1, p2, p1);
+		VectorSub(s2, p3, p2);
+		VectorCrossProduct(pn, s2, s1);
+		VectorNormalize(pn);
+		if (transform->checkBackCulling(pn)) return;
+	}
 
 	int s = GetRealState(state);
 	if (!(s & STATE_DRAW_LINE)) {
