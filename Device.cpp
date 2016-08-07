@@ -111,38 +111,28 @@ int GetRealState(int s)
 	return 0;
 }
 
+
+
 float inv = (float)1 / 255;
 Color BilinearInterp(int *tex, float u, float v)
 {
 	float y = u * 100, x = v * 100;
 
-	int x0 = floor(x), y0 = floor(y);
-	int x1 = ceil(x), y1 = ceil(y);
+	int x0 = floor(x); if (x0 > x) --x0;
+	int y0 = floor(y); if (y0 > y) --y0;
+	int x1 = x0 + 1, y1 = y0 + 1;
 
-	y0 = y0 < 0.f ? 0.f : y0;
-	x0 = x0 < 0.f ? 0.f : x0;
-	y1 = y1 < 0.f ? 0.f : y1;
-	x1 = x1 < 0.f ? 0.f : x1;
-	y0 = y0 > 99.f ? 99.f : y0;
-	x0 = x0 > 99.f ? 99.f : x0;
-	y1 = y1 > 99.f ? 99.f : y1;
-	x1 = x1 > 99.f ? 99.f : x1;
-
-	if (x0 == x1) {
-		if (x0 <= 0.f) {
-			x1 = x0 + 1;
-		}
-		else {
-			x0 = x1 - 1;
-		}
+	if (x0 < 0) {
+		x0 = 0; x1 = 1; x = 0;
 	}
-	if (y0 == y1) {
-		if (y0 <= 0.f) {
-			y1 = y0 + 1;
-		}
-		else {
-			y0 = y1 - 1;
-		}
+	if (y0 < 0) {
+		y0 = 0; y1 = 1; y = 0;
+	}
+	if (x1 > 99) {
+		x1 = 99; x0 = 98; x = 99;
+	}
+	if (y1 > 99) {
+		y1 = 99; y0 = 98; y = 99;
 	}
 
 	int c00 = tex[y0 * 100 + x0];
@@ -181,7 +171,7 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 		Color tex_color;
 		if (interp == INTERP_NONE) {
 			int i = int(tc.u * 100) * 100 + int(tc.v * 100);
-			i = i >= 10000 ? 10000 : i;
+			i = i >= 10000 ? 10000 - 1 : i;
 			int c = tex[i];
 			float inv = (float)1 / 255;
 			tex_color = { (c >> 16) * inv, (c >> 8 & 0xff) * inv, (c & 0xff) * inv };
