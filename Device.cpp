@@ -156,8 +156,8 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 	int y = (int)p.y;
 	int x = (int)p.x;
 
-	if (y >= height) return;
-	if (x >= width) return;
+	if (y < 0 || y >= height) return;
+	if (x < 0 || x >= width) return;
 
 	if (zbuffer[y * width + x] < p.z) return;
 
@@ -185,7 +185,7 @@ void Device::drawPoint(const Vector& p, const Color& color, const Texcoord& tc, 
 
 		// 默认环境光
 		Color ambient = { 1.0f, 1.0f, 1.0f };
-		float intensity = 0.5;
+		float intensity = 0.3;
 
 		// 环境光的影响
 		ambient.r *= intensity * tex_color.r;

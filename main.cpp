@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <io.h>
 #include <tchar.h>
+#include <stdio.h>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -229,6 +230,152 @@ void DrawTetrahedron(float theta)
 	device->drawTriangle(vs[0], vs[1], vs[2]);
 }
 
+struct Face {
+	int i1, i2, i3;
+};
+
+char *ReadFile(const char* file)
+{
+	FILE *pFile = fopen(file, "r");
+	if (!pFile) {
+		return NULL;
+	}
+
+	char *pBuf;
+	fseek(pFile, 0, SEEK_END);
+	int len = ftell(pFile);
+	pBuf = new char[len + 1];
+	rewind(pFile);
+	fread(pBuf, 1, len, pFile);
+	pBuf[len] = '\0';
+	fclose(pFile);
+	return pBuf;
+}
+
+int LoadMesh(const char *file, Vertex*& pVertexs, int& vsize, Face*& pFaces, int& fsize)
+{
+	char* pFile;
+	pFile = ReadFile(file);
+	if (!pFile) {
+		return 0;
+	}
+
+	char* pSrc;
+	pSrc = pFile;
+
+	int i, vc, fc;
+
+	// 计算顶点和面的个数
+	i = 0, vc = 0, fc = 0;
+	char line[1024];
+	memset(line, 0, 1024);
+	for (; *pSrc != '\0';) {
+		if (*pSrc == '\n') {
+			if (line[0] == 'v') {
+				++vc;
+			}
+			else if (line[0] == 'f') {
+				++fc;
+			}
+
+			i = 0;
+			memset(line, 0, 1024);
+		}
+		else {
+			line[i++] = *pSrc;
+		}
+		++pSrc;
+	}
+	if (vc == 0 || fc == 0) {
+		delete pFile;
+		return 0;
+	}
+
+	vsize = vc; fsize = fc;
+	pVertexs = new Vertex[vc];
+	pFaces = new Face[fc];
+
+	pSrc = pFile;
+
+	// 读取数据
+	i = 0, vc = 0, fc = 0;
+	memset(line, 0, 1024);
+	for (; *pSrc != '\0';) {
+		if (*pSrc == '\n') {
+			if (line[0] == 'v') {
+				float x, y, z;
+				sscanf(line, "v %f %f %f", &x, &y, &z);
+
+				pVertexs[vc++] = { {x, y, z, 1.f}, {0.f, 0.f, 0.f},{0.f, 1.f}, {0.f, 0.f, 0.f}, 1.f };
+			}
+			else if (line[0] == 'f') {
+				int p1, p2, p3;
+				sscanf(line, "f %d %d %d", &p1, &p2, &p3);
+
+				pFaces[fc++] = { p1 - 1, p2 - 1, p3 -1 };
+			}
+
+			i = 0;
+			memset(line, 0, 1024);
+		}
+		else {
+			line[i++] = *pSrc;
+		}
+		++pSrc;
+	}
+	
+	delete pFile;
+
+	return 1;
+}
+
+void FixNormal(Vertex& v1, Vertex& v2, Vertex& v3)
+{
+	Vector& p1 = v1.pos;
+	Vector& p2 = v2.pos;
+	Vector& p3 = v3.pos;
+
+	Vector edge1, edge2, pn;
+	VectorSub(edge1, p2, p1);
+	VectorSub(edge2, p3, p2);
+	VectorCrossProduct(pn, edge1, edge2);
+	VectorNormalize(pn);
+
+	v1.normal = pn;
+	v2.normal = pn;
+	v3.normal = pn;
+}
+
+void FixUv(Vertex& v1, Vertex& v2, Vertex& v3)
+{
+	v1.tex.u = 0.0f; v1.tex.v = 0.0f;
+	v2.tex.u = 0.0f; v2.tex.v = 0.0f;
+	v3.tex.u = 0.0f; v3.tex.v = 0.0f;
+}
+
+void DrawModel(Vertex* pVertexs, int vsize, Face* pFaces, int fsize, float theta)
+{
+	Matrix m;
+	MatrixSetRotate(m, 0.f, 1.0f, 0.f, theta);
+	transform->setWorld(m);
+	transform->update();
+
+	int i;
+	for (i = 0; i < fsize; i++) {
+		int i1 = pFaces[i].i1;
+		int i2 = pFaces[i].i2;
+		int i3 = pFaces[i].i3;
+
+		Vertex v1 = pVertexs[i1];
+		Vertex v2 = pVertexs[i2];
+		Vertex v3 = pVertexs[i3];
+
+		FixNormal(v1, v2, v3);
+		FixUv(v1, v2, v3);
+		device->drawTriangle(v1, v2, v3);
+	}
+}
+
 void SetCamera(float x, float y, float z)
 {
 	Vector eye = { x, y, z, 1.f }, at = { 0.f, 0.f, 0.f, 1.f }, up = {0.f, 1.f, 0.f, 1.f};
@@ -238,14 +385,15 @@ void SetCamera(float x, float y, float z)
 	transform->update();
 }
 
-void TransformLight(Light& light)
+void TransformLight(Light& light, float theta)
 {
 	Matrix m;
-	MatrixSetRotate(m, 0.f, 1.0f, 0.f, 0);
+	MatrixSetRotate(m, 0.f, 1.0f, 0.f, theta);
 	transform->setWorld(m);
 	transform->update();
 
-	transform->apply(light.direction, { -1.f, 1.f, -1.f, 0.f });
+	transform->apply(light.direction, { -0.3f, 1.f, -0.3f, 0.f });
+	VectorNormalize(light.direction);
 }
 
 #define VK_J 0x4A
@@ -254,6 +402,8 @@ void TransformLight(Light& light)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
 {
 	InitConsoleWindow();
+
+	srand((unsigned)time(NULL));
 
 	screen = new Screen();
 	int ret = screen->init(WINDOW_WIDTH, WINDOW_HEIGHT, _T("SoftRendering"));
@@ -267,28 +417,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 
 	textures[0] = CreateTexture();
 
-	Light light = { {-1.f, 1.f, -1.f, 0.f}, {1.f, 1.f, 1.f} };
-	VectorNormalize(light.direction);
+	Light light = { {-1.f, 1.f, -1.f, 0.f}, {0.5f, 0.5f, 0.5f} };
 
 	uint32* wfb = (uint32*)(screen->getFrameBuffer());
 	device = new Device();
 	device->init(WINDOW_WIDTH, WINDOW_HEIGHT, wfb, transform, textures, &light);
 	device->setState(1);
 
-	float theta = 1.f;
-	float dist = -3.f;
+	int vsize, fsize;
+	Vertex* pVertexs;
+	Face* pFaces;
+	LoadMesh("models/cow.obj", pVertexs, vsize, pFaces, fsize);
 
+	float theta = 1.f;
+	float dist = 3.f;
+
+	float light_theta = 1.f;
 	while (!screen->isExit()){
 		device->clear();
 		screen->dispatch();
 		SetCamera(0.f, 0.f, dist);
 
-		TransformLight(light);
+		light_theta += 0.03f;
+		TransformLight(light, light_theta);
 
 		if (screen->isKeyPressed(VK_UP))
-			dist -= 0.01f;
+			dist -= 0.05f;
 		if (screen->isKeyPressed(VK_DOWN))
-			dist += 0.01f;
+			dist += 0.05f;
 
 		if (screen->isKeyPressed(VK_LEFT)) 
 			theta += 0.01f;
@@ -305,7 +461,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 			device->autoChangeCullMode();
 
 		//DrawLine();
-		DrawBox(theta);
+		//DrawBox(theta);
+		DrawModel(pVertexs, vsize, pFaces, fsize, theta);
 		//DrawPlane(theta);
 		//DrawTetrahedron(theta);
 		//DrawColorTriangle();
@@ -323,6 +480,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 			delete textures[i];
 		}
 	}
+
+	delete[] pVertexs;
+	delete[] pFaces;
 
 	delete transform;
 	delete device;
