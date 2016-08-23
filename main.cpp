@@ -130,12 +130,15 @@ void DrawTriangle(const Vector& p1, const Vector& p2, const Vector& p3)
 	device->drawLine({ h2 }, { h3 });
 }
 
+void FixNormal(Vertex& v1, Vertex& v2, Vertex& v3);
+
 void DrawPlane(const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex& v4)
 {
 	// 必须重新制定一下纹理，不然就乱掉了
 	Vertex t1 = v1, t2 = v2, t3 = v3, t4 = v4;
 	t1.tex.u = 0.f; t2.tex.u = 1.f; t3.tex.u = 1.f; t4.tex.u = 0.f;
 	t1.tex.v = 0.f; t2.tex.v = 0.f; t3.tex.v = 1.f; t4.tex.v = 1.f;
+
 	device->drawTriangle(t1, t2, t3);
 	device->drawTriangle(t3, t4, t1);
 }
@@ -168,8 +171,15 @@ int* CreateTexture()
 
 void DrawBox(float theta)
 {
+	Matrix mm;
+	MatrixSetRotate(mm, 0.f, 1.0f, 0.f, theta);
+
+	Matrix tm;
+	MatrixSetTranslate(tm, 5.0f, 0.f, 0.f);
+
 	Matrix m;
-	MatrixSetRotate(m, 0.f, 1.0f, 1.f, theta);
+	MatrixMul(m, mm, tm);
+
 	transform->setWorld(m);
 	transform->update();
 
@@ -341,6 +351,8 @@ void FixNormal(Vertex& v1, Vertex& v2, Vertex& v3)
 	VectorCrossProduct(pn, edge1, edge2);
 	VectorNormalize(pn);
 
+	pn.w = 0.f;
+
 	v1.normal = pn;
 	v2.normal = pn;
 	v3.normal = pn;
@@ -392,7 +404,7 @@ void TransformLight(Light& light, float theta)
 	transform->setWorld(m);
 	transform->update();
 
-	transform->apply(light.direction, { -0.3f, 1.f, -0.3f, 0.f });
+	transform->applyMV(light.direction, { -0.3f, 1.f, -0.3f, 0.f });
 	VectorNormalize(light.direction);
 }
 
@@ -436,7 +448,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 	while (!screen->isExit()){
 		device->clear();
 		screen->dispatch();
-		SetCamera(0.f, 0.f, dist);
+		SetCamera(3.f, 3.f, dist);
 
 		light_theta += 0.03f;
 		TransformLight(light, light_theta);
@@ -461,7 +473,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
 			device->autoChangeCullMode();
 
 		//DrawLine();
-		//DrawBox(theta);
+		DrawBox(theta);
 		DrawModel(pVertexs, vsize, pFaces, fsize, theta);
 		//DrawPlane(theta);
 		//DrawTetrahedron(theta);

@@ -26,6 +26,13 @@ void Transform::apply(Vector& b, const Vector& a)
 	MatrixApply(b, a, transform);
 }
 
+void Transform::applyMV(Vector& b, const Vector& a)
+{
+	Matrix m;
+	MatrixMul(m, world, view);
+	MatrixApply(b, a, m);
+}
+
 void Transform::homogenize(Vector& b, const Vector& a)
 {
 	float rhw = 1 / a.w;

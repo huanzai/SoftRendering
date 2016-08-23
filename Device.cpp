@@ -329,9 +329,9 @@ void Device::drawTriangle(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 	if (transform->checkCvv(c2)) return;
 	if (transform->checkCvv(c3)) return;
 
-	transform->apply(n1, v1.normal);
-	transform->apply(n2, v2.normal);
-	transform->apply(n3, v3.normal);
+	transform->applyMV(n1, v1.normal);
+	transform->applyMV(n2, v2.normal);
+	transform->applyMV(n3, v3.normal);
 
 	Vector p1, p2, p3, min, max;
 
