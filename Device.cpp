@@ -292,9 +292,17 @@ int getTriangleInterp(const Vector& v1, const Vector& v2, const Vector& v3, cons
 {
 	float a, b, c;
 
-	c = ((v1.y - v2.y)*p.x + (v2.x - v1.x)*p.y + v1.x*v2.y - v2.x*v1.y) / ((v1.y - v2.y)*v3.x + (v2.x - v1.x)*v3.y + v1.x*v2.y - v2.x*v1.y);
+	float nv1 = ((v1.y - v2.y)*v3.x + (v2.x - v1.x)*v3.y + v1.x*v2.y - v2.x*v1.y);
+	float nv2 = ((v1.y - v3.y)*v2.x + (v3.x - v1.x)*v2.y + v1.x*v3.y - v3.x*v1.y);
+
+	if (nv1 == 0.f || nv2 == 0.f) {
+		*u = 1.f; *v = 0.f;
+		return 1;
+	}
+
+	c = ((v1.y - v2.y)*p.x + (v2.x - v1.x)*p.y + v1.x*v2.y - v2.x*v1.y) / nv1;
 	if (c < 0 || c > 1) return 0;
-	b = ((v1.y - v3.y)*p.x + (v3.x - v1.x)*p.y + v1.x*v3.y - v3.x*v1.y) / ((v1.y - v3.y)*v2.x + (v3.x - v1.x)*v2.y + v1.x*v3.y - v3.x*v1.y);
+	b = ((v1.y - v3.y)*p.x + (v3.x - v1.x)*p.y + v1.x*v3.y - v3.x*v1.y) / nv2;
 	if (b < 0 || b > 1) return 0;
 	a = 1 - b - c;
 	if (a < 0 || a > 1) return 0;

@@ -246,7 +246,7 @@ struct Face {
 
 char *ReadFile(const char* file)
 {
-	FILE *pFile = fopen(file, "r");
+	FILE *pFile = fopen(file, "rb");
 	if (!pFile) {
 		return NULL;
 	}
@@ -292,6 +292,10 @@ int LoadMesh(const char *file, Vertex*& pVertexs, int& vsize, Face*& pFaces, int
 			memset(line, 0, 1024);
 		}
 		else {
+			if (i > 1024) {
+				delete pFile;
+				return 0;
+			}
 			line[i++] = *pSrc;
 		}
 		++pSrc;
